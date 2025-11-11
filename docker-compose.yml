@@ -1,0 +1,20 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: oms_mongodb
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root_password
+
+    ports:
+      - "27017:27017"
+
+    volumes:
+      - oms_mongo_data:/data/db
+      - oms_mongo_config:/data/configdb
+
+volumes:
+  oms_mongo_data:
+  oms_mongo_config:
