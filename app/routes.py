@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from bson import ObjectId
+from datetime import datetime
 from .database import orders_collection
 from .schemas import OrderCreate, OrderResponse
 
@@ -12,11 +13,16 @@ def create_order(order: OrderCreate):
     order_dict = order.model_dump()
     # Ensure status field is set if missing
     order_dict["status"] = order_dict.get("status", "Pending")
+    # Set timestamps
+    print(order_dict)
+    now = datetime.now()
+    order_dict["created_at"] = now
+    order_dict["updated_at"] = now
+    print(order_dict)
     # Insert into MongoDB
     result = orders_collection.insert_one(order_dict)
     # Convert _id to string for response
     order_dict["_id"] = result.inserted_id
-    print("hehe", order_dict["_id"])
     return order_dict
 
 
@@ -30,7 +36,7 @@ def get_order(order_id: str):
     order = orders_collection.find_one({"_id": oid})
     if not order:
         raise HTTPException(404, "Order not found")
-
+    print(order)
     return order
 
 
@@ -41,12 +47,18 @@ def update_order(order_id: str, update_data: dict):
     except:
         raise HTTPException(400, "Invalid order ID")
 
+    original = orders_collection.find_one({"_id": oid})
+    print(original)
     result = orders_collection.update_one({"_id": oid}, {"$set": update_data})
 
     if result.matched_count == 0:
         raise HTTPException(404, "Order not found")
 
     updated = orders_collection.find_one({"_id": oid})
+    print(updated)
+    now = datetime.now()
+    updated["updated_at"] = now
+    print(updated)
     return updated
 
 
