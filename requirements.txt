@@ -1,6 +1,9 @@
 docker
 pymongo
 pytest
+pytest-cov
+pytest-xdist
+pytest-timeout
 fastapi
 uvicorn
 pydantic
