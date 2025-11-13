@@ -4,7 +4,7 @@ from typing import Dict, Any
 from pymongo.database import Database
 import os
 
-from conftest import FASTAPI_BASE_URL
+from tests.conftest import FASTAPI_BASE_URL
 
 
 @pytest.mark.crud

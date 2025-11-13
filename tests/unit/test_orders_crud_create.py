@@ -3,7 +3,7 @@ import requests
 from typing import Dict, Any
 import os
 
-from conftest import FASTAPI_BASE_URL
+from tests.conftest import FASTAPI_BASE_URL
 
 
 @pytest.mark.crud
