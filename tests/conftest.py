@@ -1,23 +1,20 @@
 import pytest
 import asyncio
-from typing import AsyncGenerator, Dict, Any
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from httpx import AsyncClient, ASGITransport
+from typing import Dict, Any
+from pymongo import MongoClient
 import uuid
 from datetime import datetime, timezone
 import requests
 
-from app.main import app
-from app.database import get_database
 from app.auth import create_access_token
 
 import time
+import os
 
-FASTAPI_BASE_URL = "http://localhost:8000"
-
-# Configuration
-TEST_MONGODB_URL = "mongodb://localhost:27017"
-BASE_DB_NAME = "test_oms_db"
+# Configuration from environment variables
+FASTAPI_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+TEST_MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://root:root_password@localhost:27017/?authSource=admin")
+BASE_DB_NAME = os.getenv("TEST_DB_NAME", "test_oms_db")
 
 @pytest.fixture(scope="session")
 def api_client():
@@ -28,17 +25,17 @@ def api_client():
     session = requests.Session()
 
     # Wait for FastAPI to be ready
-    timeout = 3  # seconds
+    timeout = 30  # seconds - longer for Docker startup
     start = time.time()
     while True:
         try:
-            r = session.get(f"{FASTAPI_BASE_URL}/docs")  # or /openapi.json
+            r = session.get(f"{FASTAPI_BASE_URL}/health")  # Use health endpoint
             if r.status_code == 200:
                 break
         except requests.exceptions.ConnectionError:
             pass
         if time.time() - start > timeout:
-            raise RuntimeError("FastAPI service did not become available in time")
+            raise RuntimeError(f"FastAPI service at {FASTAPI_BASE_URL} did not become available in time")
         time.sleep(1)
 
     yield session
@@ -76,7 +73,7 @@ def test_db(unique_db_name: str):
     Provide isolated MongoDB database for each test.
     Automatically cleans up after test completion.
     """
-    client = AsyncIOMotorClient(TEST_MONGODB_URL)
+    client = MongoClient(TEST_MONGODB_URL)
     db = client[unique_db_name]
     
     # Create indexes for better query performance
@@ -89,24 +86,6 @@ def test_db(unique_db_name: str):
     # Cleanup: Drop database after test
     client.drop_database(unique_db_name)
     client.close()
-
-
-# @pytest.fixture(scope="function")
-# def app_client(test_db):
-#     """
-#     Provide HTTP client with database dependency override.
-#     Uses AsyncClient with ASGITransport for proper async support.
-#     """
-#     def override_get_database():
-#         return test_db
-    
-#     app.dependency_overrides[get_database] = override_get_database
-    
-#     transport = ASGITransport(app=app)
-#     async with AsyncClient(transport=transport, base_url="http://test") as client:
-#         yield client
-    
-#     app.dependency_overrides.clear()
 
 
 @pytest.fixture(scope="function")

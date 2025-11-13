@@ -208,3 +208,7 @@ __marimo__/
 
 # User added
 *ignore*
+# CI/CD Test Results
+test-results/
+.env.test
+/test-results/

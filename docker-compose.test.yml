@@ -1,0 +1,40 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root_password
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  fastapi:
+    build: .
+    environment:
+      MONGODB_URL: mongodb://root:root_password@mongodb:27017
+      MONGODB_DB_NAME: oms_test_db
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  test-runner:
+    build: .
+    environment:
+      MONGODB_URL: mongodb://root:root_password@mongodb:27017
+      API_BASE_URL: http://fastapi:8000
+      TEST_DB_NAME: oms_test_ci
+    depends_on:
+      - fastapi
+      - mongodb
+    command: >
+      sh -c "
+        pip install -r requirements-test.txt &&
+        sleep 10 &&
+        mkdir -p test-results &&
+        pytest -v -n auto --junitxml=test-results/results.xml --html=test-results/report.html --self-contained-html --cov=app --cov-report=html:test-results/coverage
+      "
+    volumes:
+      - ./test-results:/app/test-results

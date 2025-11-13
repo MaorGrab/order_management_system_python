@@ -1,8 +1,9 @@
 import pytest
 import requests
 from typing import Dict, Any
+import os
 
-FASTAPI_BASE_URL = "http://localhost:8000"
+from tests.conftest import FASTAPI_BASE_URL
 
 
 @pytest.mark.crud
@@ -26,7 +27,7 @@ def test_create_order_with_valid_data_success(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )
@@ -51,7 +52,7 @@ def test_create_order_missing_user_id(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )
@@ -73,7 +74,7 @@ def test_create_order_empty_items_array(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )
@@ -102,7 +103,7 @@ def test_create_order_negative_price(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )
@@ -123,7 +124,7 @@ def test_create_order_for_different_user_forbidden(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )
@@ -154,7 +155,7 @@ def test_create_order_various_prices(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )

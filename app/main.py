@@ -1,7 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
-from typing import List, Optional
-from datetime import datetime, timezone
+from typing import Optional
 
 from app.database import get_database
 from app.models import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
@@ -34,7 +32,7 @@ async def health_check(db: AsyncIOMotorDatabase = Depends(get_database)):
         )
 
 
-@app.post("/api/v1/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order_data: OrderCreate,
     current_user: User = Depends(get_current_user),
@@ -49,34 +47,28 @@ async def create_order(
     
     # Create order document
     order_dict = order_data.model_dump()
-    # current_time: datetime = datetime.now(timezone.utc)
-    # order_dict["created_at"] = current_time
-    # order_dict["updated_at"] = current_time
     
     # Insert into MongoDB
     result = await db.orders.insert_one(order_dict)
     
     # Retrieve created order
     created_order = await db.orders.find_one({"_id": result.inserted_id})
-    created_order["id"] = str(created_order["_id"])
-    
     return created_order
 
 
-@app.get("/api/v1/orders/{order_id}", response_model=OrderResponse)
+@app.get("/orders/{order_id}", response_model=OrderResponse)
 async def get_order(
     order_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     # Validate ObjectId
-    try:
-        obj_id = ObjectId(order_id)
-    except Exception:
+    if not ObjectId.is_valid(order_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid order ID format"
         )
+    obj_id = ObjectId(order_id)
     
     # Find order
     order = await db.orders.find_one({"_id": obj_id})
@@ -93,12 +85,10 @@ async def get_order(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to access this order"
         )
-    
-    order["id"] = str(order["_id"])
     return order
 
 
-@app.get("/api/v1/orders", response_model=OrderListResponse)
+@app.get("/orders", response_model=OrderListResponse)
 async def list_orders(
     status: Optional[str] = None,
     page: int = 1,
@@ -127,10 +117,6 @@ async def list_orders(
     cursor = db.orders.find(query).skip(skip).limit(limit).sort("created_at", -1)
     orders = await cursor.to_list(length=limit)
     
-    # Convert ObjectId to string
-    for order in orders:
-        order["id"] = str(order["_id"])
-    
     return OrderListResponse(
         orders=[OrderResponse(**order) for order in orders],
         total=total,
@@ -140,7 +126,7 @@ async def list_orders(
     )
 
 
-@app.patch("/api/v1/orders/{order_id}", response_model=OrderResponse)
+@app.patch("/orders/{order_id}", response_model=OrderResponse)
 async def update_order(
     order_id: str,
     update_data: OrderUpdate,
@@ -148,13 +134,12 @@ async def update_order(
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     # Validate ObjectId
-    try:
-        obj_id = ObjectId(order_id)
-    except Exception:
+    if not ObjectId.is_valid(order_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid order ID format"
         )
+    obj_id = ObjectId(order_id)
     
     # Find order
     order = await db.orders.find_one({"_id": obj_id})
@@ -167,7 +152,6 @@ async def update_order(
     
     # Update order
     update_dict = update_data.model_dump(exclude_unset=True)
-    # update_dict["updated_at"] = datetime.now(timezone.utc)
     
     await db.orders.update_one(
         {"_id": obj_id},
@@ -175,26 +159,23 @@ async def update_order(
     )
     
     # Return updated order
-    updated_order = await db.orders.find_one({"_id": obj_id})
-    # updated_order["id"] = str(updated_order["_id"])
-    
+    updated_order = await db.orders.find_one({"_id": obj_id})    
     return updated_order
 
 
-@app.delete("/api/v1/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order(
     order_id: str,
     current_user: User = Depends(get_current_admin_user),  # Only admins can delete
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     # Validate ObjectId
-    try:
-        obj_id = ObjectId(order_id)
-    except Exception:
+    if not ObjectId.is_valid(order_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid order ID format"
         )
+    obj_id = ObjectId(order_id)
     
     # Delete order
     result = await db.orders.delete_one({"_id": obj_id})
@@ -204,5 +185,4 @@ async def delete_order(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found"
         )
-    
     return None
