@@ -41,7 +41,7 @@ jobs:
 
   tag_release:
     name: Tag Release
-    needs: tests
+    needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
