@@ -59,7 +59,7 @@ def test_create_order_with_negative_price(
         headers=auth_headers
     )
     
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     assert "price" in str(response.json()).lower()
 
 
@@ -89,7 +89,7 @@ def test_create_order_with_zero_quantity(
         headers=auth_headers
     )
     
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.crud
@@ -110,7 +110,7 @@ def test_create_order_empty_items_list(
         json=invalid_order,
         headers=auth_headers
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.crud
@@ -139,7 +139,7 @@ def test_update_with_invalid_status(
         json=invalid_update,
         headers=admin_headers
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.auth

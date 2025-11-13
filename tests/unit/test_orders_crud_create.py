@@ -46,8 +46,7 @@ def test_create_order_missing_user_id(
 ):
     """Test creating order without user_id fails with 422."""
     order_data = {
-        "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
-        "total_price": 100
+        "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}]
     }
     
     response = api_client.post(
@@ -55,7 +54,7 @@ def test_create_order_missing_user_id(
         json=order_data,
         headers=auth_headers
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.crud
@@ -76,7 +75,7 @@ def test_create_order_empty_items_array(
         json=order_data,
         headers=auth_headers
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.crud
@@ -104,7 +103,7 @@ def test_create_order_negative_price(
         json=order_data,
         headers=auth_headers
     )
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 @pytest.mark.crud
