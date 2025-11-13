@@ -1,8 +1,27 @@
-from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from typing import Optional
+import os
 
-MONGO_URI = "mongodb://root:root_password@localhost:27017/?authSource=admin"
-DB_NAME = "oms_test_db"
+# Global client
+_client: Optional[AsyncIOMotorClient] = None
 
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
-orders_collection = db["orders"]
+
+def get_mongo_client() -> AsyncIOMotorClient:
+    global _client
+    if _client is None:
+        mongodb_url = os.getenv("MONGODB_URL", "mongodb://root:root_password@localhost:27017")
+        _client = AsyncIOMotorClient(mongodb_url)
+    return _client
+
+
+async def get_database() -> AsyncIOMotorDatabase:
+    client = get_mongo_client()
+    db_name = os.getenv("MONGODB_DB_NAME", "oms_db")
+    return client[db_name]
+
+
+async def close_mongo_connection():
+    global _client
+    if _client is not None:
+        _client.close()
+        _client = None
