@@ -1,7 +1,7 @@
 import pytest
 import requests
 from typing import Dict, Any
-import os
+from starlette import status
 
 from tests.conftest import FASTAPI_BASE_URL
 
@@ -31,8 +31,7 @@ def test_create_order_with_valid_data_success(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 201
+    assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data["user_id"] == test_user["user_id"]
     assert data["status"] == "Pending"
@@ -56,8 +55,7 @@ def test_create_order_missing_user_id(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @pytest.mark.crud
@@ -78,8 +76,7 @@ def test_create_order_empty_items_array(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @pytest.mark.crud
@@ -107,8 +104,7 @@ def test_create_order_negative_price(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @pytest.mark.crud
@@ -128,8 +124,7 @@ def test_create_order_for_different_user_forbidden(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 403
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.parametrize("total_price,items", [
@@ -159,6 +154,5 @@ def test_create_order_various_prices(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 201
+    assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["total_price"] == total_price

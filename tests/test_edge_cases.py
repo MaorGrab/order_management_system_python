@@ -2,7 +2,7 @@ import pytest
 import requests
 from typing import Dict, Any
 from pymongo.database import Database
-import os
+from starlette import status
 
 from tests.conftest import FASTAPI_BASE_URL
 
@@ -31,8 +31,7 @@ def test_create_order_good(
         json=order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 201
+    assert response.status_code == status.HTTP_201_CREATED
 
 @pytest.mark.crud
 def test_create_order_with_negative_price(
@@ -60,7 +59,7 @@ def test_create_order_with_negative_price(
         headers=auth_headers
     )
     
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert "price" in str(response.json()).lower()
 
 
@@ -90,7 +89,7 @@ def test_create_order_with_zero_quantity(
         headers=auth_headers
     )
     
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @pytest.mark.crud
@@ -111,8 +110,7 @@ def test_create_order_empty_items_list(
         json=invalid_order,
         headers=auth_headers
     )
-    
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @pytest.mark.crud
@@ -141,8 +139,7 @@ def test_update_with_invalid_status(
         json=invalid_update,
         headers=admin_headers
     )
-    
-    assert response.status_code == 422
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 @pytest.mark.auth
@@ -156,8 +153,7 @@ def test_create_order_without_authentication(
         f"{FASTAPI_BASE_URL}/orders",
         json=sample_order_data
     )
-    
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.auth
@@ -174,8 +170,7 @@ def test_create_order_with_invalid_token(
         json=sample_order_data,
         headers=invalid_headers
     )
-    
-    assert response.status_code == 401
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.auth
@@ -217,8 +212,7 @@ def test_get_order_belonging_to_another_user(
         f"{FASTAPI_BASE_URL}/orders/{order_id}",
         headers=other_headers
     )
-    
-    assert response.status_code == 403
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.crud
@@ -237,8 +231,7 @@ def test_create_order_for_different_user(
         json=sample_order_data,
         headers=auth_headers
     )
-    
-    assert response.status_code == 403
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.crud
@@ -254,5 +247,4 @@ def test_invalid_order_id_format(
         f"{FASTAPI_BASE_URL}/orders/{invalid_id}",
         headers=auth_headers
     )
-    
-    assert response.status_code == 400
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
