@@ -8,15 +8,13 @@ FASTAPI_BASE_URL = "http://localhost:8000"
 
 
 @pytest.mark.crud
-@pytest.mark.asyncio
-async def test_create_order_good(
+def test_create_order_good(
     api_client: requests.Session,
     auth_headers: Dict[str, str],
     test_user: Dict[str, Any],
-    
 ):
-    """Test that orders with negative prices are rejected."""
-    invalid_order = {
+    """Test that valid order creation succeeds."""
+    order_data = {
         "user_id": test_user["user_id"],
         "items": [
             {
@@ -25,16 +23,14 @@ async def test_create_order_good(
                 "price": 1200.00,
                 "quantity": 1
             }
-        ],
-        "total_price": 1200.00
+        ]
     }
     
-    async with httpx.AsyncClient(base_url=FASTAPI_BASE_URL) as api_client:
-        response = await api_client.post(
-            "/api/v1/orders",
-            json=invalid_order,
-            headers=auth_headers
-        )
+    response = api_client.post(
+        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        json=order_data,
+        headers=auth_headers
+    )
     
     assert response.status_code == 201
 
@@ -55,8 +51,7 @@ def test_create_order_with_negative_price(
                 "price": -1200.00,
                 "quantity": 1
             }
-        ],
-        "total_price": -1200.00
+        ]
     }
     
     response = api_client.post(
@@ -86,8 +81,7 @@ def test_create_order_with_zero_quantity(
                 "price": 1200.00,
                 "quantity": 0
             }
-        ],
-        "total_price": 0
+        ]
     }
     
     response = api_client.post(
@@ -109,8 +103,7 @@ def test_create_order_empty_items_list(
     """Test that orders with no items are rejected."""
     invalid_order = {
         "user_id": test_user["user_id"],
-        "items": [],
-        "total_price": 0
+        "items": []
     }
     
     response = api_client.post(

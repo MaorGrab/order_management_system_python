@@ -49,9 +49,9 @@ async def create_order(
     
     # Create order document
     order_dict = order_data.model_dump()
-    current_time: datetime = datetime.now(timezone.utc)
-    order_dict["created_at"] = current_time
-    order_dict["updated_at"] = current_time
+    # current_time: datetime = datetime.now(timezone.utc)
+    # order_dict["created_at"] = current_time
+    # order_dict["updated_at"] = current_time
     
     # Insert into MongoDB
     result = await db.orders.insert_one(order_dict)
@@ -167,7 +167,7 @@ async def update_order(
     
     # Update order
     update_dict = update_data.model_dump(exclude_unset=True)
-    update_dict["updated_at"] = datetime.now(timezone.utc)
+    # update_dict["updated_at"] = datetime.now(timezone.utc)
     
     await db.orders.update_one(
         {"_id": obj_id},
@@ -176,7 +176,7 @@ async def update_order(
     
     # Return updated order
     updated_order = await db.orders.find_one({"_id": obj_id})
-    updated_order["id"] = str(updated_order["_id"])
+    # updated_order["id"] = str(updated_order["_id"])
     
     return updated_order
 

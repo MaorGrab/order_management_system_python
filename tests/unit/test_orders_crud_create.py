@@ -22,8 +22,7 @@ def test_create_order_with_valid_data_success(
                 "price": 1200.00,
                 "quantity": 1
             }
-        ],
-        "total_price": 1200.00
+        ]
     }
     
     response = api_client.post(
@@ -36,6 +35,7 @@ def test_create_order_with_valid_data_success(
     data = response.json()
     assert data["user_id"] == test_user["user_id"]
     assert data["status"] == "Pending"
+    assert data["total_price"] == 1200.00
 
 
 @pytest.mark.crud
@@ -69,8 +69,7 @@ def test_create_order_empty_items_array(
     """Test creating order with empty items fails with 422."""
     order_data = {
         "user_id": test_user["user_id"],
-        "items": [],
-        "total_price": 0
+        "items": []
     }
     
     response = api_client.post(
@@ -99,8 +98,7 @@ def test_create_order_negative_price(
                 "price": -100,
                 "quantity": 1
             }
-        ],
-        "total_price": -100
+        ]
     }
     
     response = api_client.post(
@@ -121,8 +119,7 @@ def test_create_order_for_different_user_forbidden(
     """Test creating order for different user fails with 403."""
     order_data = {
         "user_id": "different_user_123",
-        "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
-        "total_price": 100
+        "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}]
     }
     
     response = api_client.post(
@@ -153,8 +150,7 @@ def test_create_order_various_prices(
     """Test creating orders with various valid price combinations."""
     order_data = {
         "user_id": test_user["user_id"],
-        "items": items,
-        "total_price": total_price
+        "items": items
     }
     
     response = api_client.post(
