@@ -1,14 +1,11 @@
 import pytest
 import asyncio
-from typing import AsyncGenerator, Dict, Any
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from httpx import AsyncClient, ASGITransport
+from typing import Dict, Any
+from pymongo import MongoClient
 import uuid
 from datetime import datetime, timezone
 import requests
 
-from app.main import app
-from app.database import get_database
 from app.auth import create_access_token
 
 import time
@@ -16,7 +13,7 @@ import os
 
 # Configuration from environment variables
 FASTAPI_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
-TEST_MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+TEST_MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://root:root_password@localhost:27017/?authSource=admin")
 BASE_DB_NAME = os.getenv("TEST_DB_NAME", "test_oms_db")
 
 @pytest.fixture(scope="session")
@@ -76,7 +73,7 @@ def test_db(unique_db_name: str):
     Provide isolated MongoDB database for each test.
     Automatically cleans up after test completion.
     """
-    client = AsyncIOMotorClient(TEST_MONGODB_URL)
+    client = MongoClient(TEST_MONGODB_URL)
     db = client[unique_db_name]
     
     # Create indexes for better query performance
