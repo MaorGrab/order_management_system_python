@@ -47,6 +47,14 @@ async def create_order(
     
     # Create order document
     order_dict = order_data.model_dump()
+
+    if current_user.role != "admin":
+        if order_dict["status"] != "Pending":
+            # Non-admins can only create pending orders
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only pending orders can be created by XXX-admin users"
+            )
     
     # Insert into MongoDB
     result = await db.orders.insert_one(order_dict)
@@ -63,7 +71,7 @@ async def get_order(
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     # Validate ObjectId
-    if not ObjectId.is_valid(order_id):
+    if (not order_id) or (not ObjectId.is_valid(order_id)):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid order ID format"
