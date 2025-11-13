@@ -4,6 +4,10 @@ from datetime import datetime
 from bson import ObjectId
 
 
+def time_to_str(time: datetime):
+    return time.strftime("%Y-%m-%d %H:%M:%S").replace(' ', 'T') + 'Z'
+
+
 class OrderItem(BaseModel):
     product_id: str
     name: str
@@ -15,6 +19,7 @@ class OrderCreate(BaseModel):
     user_id: str
     items: List[OrderItem] = Field(min_length=1, description="Order must have at least one item")
     total_price: float = Field(gt=0)
+    status: str = Field(default="Pending", description="Initial status of the order")
     
     @field_validator('items')
     @classmethod
@@ -28,8 +33,8 @@ class OrderUpdate(BaseModel):
     status: Optional[Literal["Pending", "Processing", "Shipped", "Delivered", "Cancelled"]] = None
 
 
-class OrderResponse(BaseModel):
-    id: str
+class OrderResponse(OrderCreate):
+    id: ObjectId = Field(alias="_id")
     user_id: str
     items: List[OrderItem]
     total_price: float
@@ -37,10 +42,14 @@ class OrderResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        json_encoders = {
-            ObjectId: str
-        }
+    model_config = {                  
+        "json_encoders": {
+            ObjectId: str,
+            datetime: time_to_str,
+        },
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+    }
 
 
 class OrderListResponse(BaseModel):

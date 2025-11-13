@@ -139,7 +139,7 @@ def test_update_with_invalid_status(
         json=sample_order_data,
         headers=auth_headers
     )
-    order_id = create_response.json()["id"]
+    order_id = create_response.json()["_id"]
     
     # Try invalid status
     invalid_update = {"status": "InvalidStatus"}
@@ -202,7 +202,7 @@ def test_get_order_belonging_to_another_user(
         json=sample_order_data,
         headers=auth_headers
     )
-    order_id = create_response.json()["id"]
+    order_id = create_response.json()["_id"]
     
     # Create second user with different token
     import uuid

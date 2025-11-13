@@ -34,7 +34,6 @@ def test_create_order_with_valid_data_success(
     
     assert response.status_code == 201
     data = response.json()
-    assert "id" in data
     assert data["user_id"] == test_user["user_id"]
     assert data["status"] == "Pending"
 

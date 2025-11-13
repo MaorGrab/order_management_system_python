@@ -49,9 +49,9 @@ async def create_order(
     
     # Create order document
     order_dict = order_data.model_dump()
-    order_dict["created_at"] = datetime.now(timezone.utc)
-    order_dict["updated_at"] = datetime.now(timezone.utc)
-    order_dict["status"] = "Pending"
+    current_time: datetime = datetime.now(timezone.utc)
+    order_dict["created_at"] = current_time
+    order_dict["updated_at"] = current_time
     
     # Insert into MongoDB
     result = await db.orders.insert_one(order_dict)
@@ -60,7 +60,7 @@ async def create_order(
     created_order = await db.orders.find_one({"_id": result.inserted_id})
     created_order["id"] = str(created_order["_id"])
     
-    return OrderResponse(**created_order)
+    return created_order
 
 
 @app.get("/api/v1/orders/{order_id}", response_model=OrderResponse)
@@ -95,7 +95,7 @@ async def get_order(
         )
     
     order["id"] = str(order["_id"])
-    return OrderResponse(**order)
+    return order
 
 
 @app.get("/api/v1/orders", response_model=OrderListResponse)
@@ -178,7 +178,7 @@ async def update_order(
     updated_order = await db.orders.find_one({"_id": obj_id})
     updated_order["id"] = str(updated_order["_id"])
     
-    return OrderResponse(**updated_order)
+    return updated_order
 
 
 @app.delete("/api/v1/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
