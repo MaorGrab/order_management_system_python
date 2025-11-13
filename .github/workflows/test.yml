@@ -29,27 +29,32 @@ jobs:
       run: docker compose -f docker-compose.test.yml down -v
 
   deploy:
-    name: Simulated Deployment
+    name: Deploy to Production
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && success()
 
     steps:
-      - name: Ensure deploy.sh is executable
-        run: chmod +x .github/scripts/deploy.sh
-      - name: Run deployment
-        run: .github/scripts/deploy.sh
+      - uses: actions/checkout@v4
+      
+      - name: Deploy Application
+        run: |
+          chmod +x .github/scripts/deploy.sh
+          .github/scripts/deploy.sh
 
   tag_release:
     name: Tag Release
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && success()
 
     steps:
       - uses: actions/checkout@v4
-      - name: Bump version and tag
+      
+      - name: Create Release Tag
         run: |
           VERSION=$(date +'%Y.%m.%d-%H%M%S')
-          git tag -a "v$VERSION" -m "Automated release"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "v$VERSION" -m "Automated release v$VERSION"
           git push origin "v$VERSION"
