@@ -34,7 +34,7 @@ async def health_check(db: AsyncIOMotorDatabase = Depends(get_database)):
         )
 
 
-@app.post("/api/v1/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order_data: OrderCreate,
     current_user: User = Depends(get_current_user),
@@ -63,7 +63,7 @@ async def create_order(
     return created_order
 
 
-@app.get("/api/v1/orders/{order_id}", response_model=OrderResponse)
+@app.get("/orders/{order_id}", response_model=OrderResponse)
 async def get_order(
     order_id: str,
     current_user: User = Depends(get_current_user),
@@ -98,7 +98,7 @@ async def get_order(
     return order
 
 
-@app.get("/api/v1/orders", response_model=OrderListResponse)
+@app.get("/orders", response_model=OrderListResponse)
 async def list_orders(
     status: Optional[str] = None,
     page: int = 1,
@@ -140,7 +140,7 @@ async def list_orders(
     )
 
 
-@app.patch("/api/v1/orders/{order_id}", response_model=OrderResponse)
+@app.patch("/orders/{order_id}", response_model=OrderResponse)
 async def update_order(
     order_id: str,
     update_data: OrderUpdate,
@@ -181,7 +181,7 @@ async def update_order(
     return updated_order
 
 
-@app.delete("/api/v1/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/orders/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_order(
     order_id: str,
     current_user: User = Depends(get_current_admin_user),  # Only admins can delete

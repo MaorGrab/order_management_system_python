@@ -28,7 +28,7 @@ def test_create_order_good(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=order_data,
         headers=auth_headers
     )
@@ -56,7 +56,7 @@ def test_create_order_with_negative_price(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=invalid_order,
         headers=auth_headers
     )
@@ -86,7 +86,7 @@ def test_create_order_with_zero_quantity(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=invalid_order,
         headers=auth_headers
     )
@@ -108,7 +108,7 @@ def test_create_order_empty_items_list(
     }
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=invalid_order,
         headers=auth_headers
     )
@@ -129,7 +129,7 @@ def test_update_with_invalid_status(
     # Create order
     sample_order_data["user_id"] = test_user["user_id"]
     create_response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=sample_order_data,
         headers=auth_headers
     )
@@ -138,7 +138,7 @@ def test_update_with_invalid_status(
     # Try invalid status
     invalid_update = {"status": "InvalidStatus"}
     response = api_client.patch(
-        f"{FASTAPI_BASE_URL}/api/v1/orders/{order_id}",
+        f"{FASTAPI_BASE_URL}/orders/{order_id}",
         json=invalid_update,
         headers=admin_headers
     )
@@ -154,7 +154,7 @@ def test_create_order_without_authentication(
 ):
     """Test that unauthenticated requests are rejected."""
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=sample_order_data
     )
     
@@ -171,7 +171,7 @@ def test_create_order_with_invalid_token(
     invalid_headers = {"Authorization": "Bearer invalid_token_here"}
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=sample_order_data,
         headers=invalid_headers
     )
@@ -192,7 +192,7 @@ def test_get_order_belonging_to_another_user(
     # Create order for first user
     sample_order_data["user_id"] = test_user["user_id"]
     create_response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=sample_order_data,
         headers=auth_headers
     )
@@ -215,7 +215,7 @@ def test_get_order_belonging_to_another_user(
     
     # Try to access with different user
     response = api_client.get(
-        f"{FASTAPI_BASE_URL}/api/v1/orders/{order_id}",
+        f"{FASTAPI_BASE_URL}/orders/{order_id}",
         headers=other_headers
     )
     
@@ -234,7 +234,7 @@ def test_create_order_for_different_user(
     sample_order_data["user_id"] = "different_user_123"
     
     response = api_client.post(
-        f"{FASTAPI_BASE_URL}/api/v1/orders",
+        f"{FASTAPI_BASE_URL}/orders",
         json=sample_order_data,
         headers=auth_headers
     )
@@ -252,7 +252,7 @@ def test_invalid_order_id_format(
     invalid_id = "not-a-valid-objectid"
     
     response = api_client.get(
-        f"{FASTAPI_BASE_URL}/api/v1/orders/{invalid_id}",
+        f"{FASTAPI_BASE_URL}/orders/{invalid_id}",
         headers=auth_headers
     )
     

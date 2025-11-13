@@ -36,7 +36,7 @@ def api_client():
             pass
         if time.time() - start > timeout:
             raise RuntimeError(f"FastAPI service at {FASTAPI_BASE_URL} did not become available in time")
-        time.sleep(2)
+        time.sleep(1)
 
     yield session
 
