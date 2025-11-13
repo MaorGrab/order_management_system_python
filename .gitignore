@@ -211,3 +211,4 @@ __marimo__/
 # CI/CD Test Results
 test-results/
 .env.test
+/test-results/
