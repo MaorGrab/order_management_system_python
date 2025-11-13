@@ -35,11 +35,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Ensure deploy.sh is executable
-      run: chmod +x ./deploy.sh
-    - name: Run deployment
-      run: ./deploy.sh
+      - name: Ensure deploy.sh is executable
+        run: chmod +x .github/scripts/deploy.sh
+      - name: Run deployment
+        run: .github/scripts/deploy.sh
 
   tag_release:
     name: Tag Release
