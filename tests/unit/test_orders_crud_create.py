@@ -3,7 +3,7 @@ import requests
 from typing import Dict, Any
 import os
 
-FASTAPI_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+from conftest import FASTAPI_BASE_URL
 
 
 @pytest.mark.crud

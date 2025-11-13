@@ -27,3 +27,14 @@ jobs:
     - name: Cleanup
       if: always()
       run: docker compose -f docker-compose.test.yml down -v
+
+  deploy:
+    name: Simulated Deployment
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy application
+        run: ./deploy.sh

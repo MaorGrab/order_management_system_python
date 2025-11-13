@@ -1,9 +1,7 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Literal
 from datetime import datetime, timezone
 from bson import ObjectId
-
-# DATE_SENTINEL = datetime(1970, 1, 1)
 
 
 def time_to_str(time: datetime):
@@ -27,7 +25,6 @@ class OrderCreate(BaseModel):
     
     @model_validator(mode='after')
     def postprocess(self):
-        print('xxxxx', ' postprocessing from OrderCreate is being ran')
         self._calculate_total_price()
         self._set_timestamps()
         return self
@@ -38,10 +35,8 @@ class OrderCreate(BaseModel):
     def _set_timestamps(self):
         current_time: datetime = datetime.now(timezone.utc)
         if self.created_at is None:
-            print('self.created_at is None and is being set to: ', current_time)
             self.created_at = current_time
         self.created_at = self.created_at.replace(tzinfo=timezone.utc) #  make sure timezone is UTC
-        print('xxxxxxxxx', self.created_at, ' || ', current_time)
         if self.created_at > current_time:
             raise ValueError("Created at cannot be in the future")
         if self.updated_at is None:
@@ -56,7 +51,6 @@ class OrderUpdate(BaseModel):
 
     @model_validator(mode='after')
     def postprocess(self):
-        print('xxxxx', ' postprocessing from OrderUpdate is being ran')
         self._update_total_price()
         self._set_update_time()
         return self

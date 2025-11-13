@@ -88,24 +88,6 @@ def test_db(unique_db_name: str):
     client.close()
 
 
-# @pytest.fixture(scope="function")
-# def app_client(test_db):
-#     """
-#     Provide HTTP client with database dependency override.
-#     Uses AsyncClient with ASGITransport for proper async support.
-#     """
-#     def override_get_database():
-#         return test_db
-    
-#     app.dependency_overrides[get_database] = override_get_database
-    
-#     transport = ASGITransport(app=app)
-#     async with AsyncClient(transport=transport, base_url="http://test") as client:
-#         yield client
-    
-#     app.dependency_overrides.clear()
-
-
 @pytest.fixture(scope="function")
 def test_user(test_db) -> Dict[str, Any]:
     """Create a test user and return user data with auth token."""
