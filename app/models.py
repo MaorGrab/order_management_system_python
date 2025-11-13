@@ -17,8 +17,9 @@ class OrderItem(BaseModel):
 
 class OrderCreate(BaseModel):
     user_id: str
+    status: Literal["Pending", "Processing", "Shipped", "Delivered", "Cancelled"] = \
+        Field(default="Pending", description="Order status")
     items: List[OrderItem] = Field(min_length=1, description="Order must have at least one item")
-    status: str = Field(default="Pending", description="Initial status of the order")
     total_price: Optional[float] = Field(default=None, description="Auto-calculated from items")
     created_at: Optional[datetime] = Field(default=None)
     updated_at: Optional[datetime] = Field(default=None)
