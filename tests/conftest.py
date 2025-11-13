@@ -12,12 +12,12 @@ from app.database import get_database
 from app.auth import create_access_token
 
 import time
+import os
 
-FASTAPI_BASE_URL = "http://localhost:8000"
-
-# Configuration
-TEST_MONGODB_URL = "mongodb://localhost:27017"
-BASE_DB_NAME = "test_oms_db"
+# Configuration from environment variables
+FASTAPI_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+TEST_MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+BASE_DB_NAME = os.getenv("TEST_DB_NAME", "test_oms_db")
 
 @pytest.fixture(scope="session")
 def api_client():
@@ -28,18 +28,18 @@ def api_client():
     session = requests.Session()
 
     # Wait for FastAPI to be ready
-    timeout = 3  # seconds
+    timeout = 30  # seconds - longer for Docker startup
     start = time.time()
     while True:
         try:
-            r = session.get(f"{FASTAPI_BASE_URL}/docs")  # or /openapi.json
+            r = session.get(f"{FASTAPI_BASE_URL}/health")  # Use health endpoint
             if r.status_code == 200:
                 break
         except requests.exceptions.ConnectionError:
             pass
         if time.time() - start > timeout:
-            raise RuntimeError("FastAPI service did not become available in time")
-        time.sleep(1)
+            raise RuntimeError(f"FastAPI service at {FASTAPI_BASE_URL} did not become available in time")
+        time.sleep(2)
 
     yield session
 

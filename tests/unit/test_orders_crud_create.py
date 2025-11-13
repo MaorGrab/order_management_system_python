@@ -1,8 +1,9 @@
 import pytest
 import requests
 from typing import Dict, Any
+import os
 
-FASTAPI_BASE_URL = "http://localhost:8000"
+FASTAPI_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
 
 @pytest.mark.crud
