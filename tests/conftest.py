@@ -52,7 +52,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def worker_id(request):
     """Get worker ID for parallel test execution."""
     if hasattr(request.config, 'workerinput'):
@@ -67,29 +67,45 @@ def unique_db_name(worker_id: str) -> str:
     return f"{BASE_DB_NAME}_{worker_id}_{unique_id}"
 
 
-@pytest.fixture(scope="function")
-def test_db(unique_db_name: str):
-    """
-    Provide isolated MongoDB database for each test.
-    Automatically cleans up after test completion.
-    """
+# @pytest.fixture(scope="function")
+# def test_db(unique_db_name: str):
+#     """
+#     Provide isolated MongoDB database for each test.
+#     Automatically cleans up after test completion.
+#     """
+#     client = MongoClient(TEST_MONGODB_URL)
+#     db = client[unique_db_name]
+    
+#     # Create indexes for better query performance
+#     db.orders.create_index("user_id")
+#     db.orders.create_index("status")
+#     db.users.create_index("email", unique=True)
+    
+#     yield db
+    
+#     # # Cleanup: Drop database after test
+#     # client.drop_database(unique_db_name)
+#     client.close()
+
+@pytest.fixture(scope="session")
+def mongo_client(worker_id: str):
     client = MongoClient(TEST_MONGODB_URL)
-    db = client[unique_db_name]
-    
-    # Create indexes for better query performance
-    db.orders.create_index("user_id")
-    db.orders.create_index("status")
-    db.users.create_index("email", unique=True)
-    
-    yield db
-    
-    # Cleanup: Drop database after test
-    client.drop_database(unique_db_name)
+    yield client
     client.close()
 
+@pytest.fixture
+def db_connection(unique_db_name: str, mongo_client: MongoClient):
+    return mongo_client[unique_db_name]
+
+@pytest.fixture(autouse=True)
+def cleanup_db(unique_db_name: str, mongo_client: MongoClient):
+    yield
+    db = mongo_client[unique_db_name]
+    mongo_client.drop_database(unique_db_name)
+
 
 @pytest.fixture(scope="function")
-def test_user(test_db) -> Dict[str, Any]:
+def test_user(db_connection) -> Dict[str, Any]:
     """Create a test user and return user data with auth token."""
     user_data = {
         "user_id": f"user_{uuid.uuid4().hex[:8]}",
@@ -99,7 +115,7 @@ def test_user(test_db) -> Dict[str, Any]:
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    test_db.users.insert_one(user_data.copy())
+    db_connection.users.insert_one(user_data.copy())
     
     # Generate JWT token
     token = create_access_token(
@@ -113,7 +129,7 @@ def test_user(test_db) -> Dict[str, Any]:
 
 
 @pytest.fixture(scope="function")
-def test_admin(test_db) -> Dict[str, Any]:
+def test_admin(db_connection) -> Dict[str, Any]:
     """Create a test admin user."""
     admin_data = {
         "user_id": f"admin_{uuid.uuid4().hex[:8]}",
@@ -123,7 +139,7 @@ def test_admin(test_db) -> Dict[str, Any]:
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
-    test_db.users.insert_one(admin_data.copy())
+    db_connection.users.insert_one(admin_data.copy())
     
     token = create_access_token(
         data={"sub": admin_data["user_id"], "role": admin_data["role"]}
