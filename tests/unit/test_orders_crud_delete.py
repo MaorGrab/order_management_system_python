@@ -1,8 +1,9 @@
 import pytest
-import requests
 from typing import Dict, Any
 from bson import ObjectId
 from starlette import status
+from fastapi.testclient import TestClient
+from pymongo.collection import Collection
 from tests.conftest import FASTAPI_BASE_URL
 
 
@@ -17,7 +18,8 @@ class TestDeleteOrderSuccess:
 
     def test_delete_order_success(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -37,15 +39,11 @@ class TestDeleteOrderSuccess:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = result.inserted_id
 
         # Delete order
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=admin_headers
         )
@@ -55,7 +53,8 @@ class TestDeleteOrderSuccess:
 
     def test_delete_order_removes_from_database(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -75,37 +74,28 @@ class TestDeleteOrderSuccess:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = result.inserted_id
+        order_id_obj = ObjectId(order_id)
 
         # Verify order exists before deletion
-        get_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_id}",
-            headers=admin_headers
-        )
-        assert get_response.status_code == status.HTTP_200_OK
+        get_response = orders_collection.find_one({"_id": order_id_obj})
+        assert get_response is not None
 
         # Delete order
-        delete_response = api_client.delete(
+        delete_response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=admin_headers
         )
         assert delete_response.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
 
-        # Verify order no longer exists
-        get_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_id}",
-            headers=admin_headers
-        )
-        assert get_response.status_code == status.HTTP_404_NOT_FOUND
+        get_response = orders_collection.find_one({"_id": order_id_obj})
+        assert get_response is None
 
     def test_delete_multiple_orders_sequentially(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -133,31 +123,25 @@ class TestDeleteOrderSuccess:
                 "status": "Pending"
             }
 
-            create_response = api_client.post(
-                f"{FASTAPI_BASE_URL}/orders",
-                json=order_data,
-                headers=admin_headers
-            )
-            order_ids.append(create_response.json()["_id"])
+            result = orders_collection.insert_one(order_data)
+            order_ids.append(str(result.inserted_id))
 
         # Delete each order and verify
         for order_id in order_ids:
-            delete_response = api_client.delete(
+            delete_response = sync_client.delete(
                 f"{FASTAPI_BASE_URL}/orders/{order_id}",
                 headers=admin_headers
             )
             assert delete_response.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
 
             # Verify it's gone
-            get_response = api_client.get(
-                f"{FASTAPI_BASE_URL}/orders/{order_id}",
-                headers=admin_headers
-            )
-            assert get_response.status_code == status.HTTP_404_NOT_FOUND
+            order_obj = orders_collection.find_one({"_id": ObjectId(order_id)})
+            assert order_obj is None
 
     def test_delete_order_in_different_status(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -177,28 +161,14 @@ class TestDeleteOrderSuccess:
                 "user_id": test_admin["user_id"],
                 "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
                 "total_price": 100.00,
-                "status": "Pending"
+                "status": test_status
             }
 
-            create_response = api_client.post(
-                f"{FASTAPI_BASE_URL}/orders",
-                json=order_data,
-                headers=admin_headers
-            )
-            order_id = create_response.json()["_id"]
-
-            # Transition to test_status
-            if test_status != "Pending":
-                all_statuses = ["Pending", "Processing", "Shipped", "Delivered"]
-                for status_val in all_statuses[1:all_statuses.index(test_status) + 1]:
-                    api_client.patch(
-                        f"{FASTAPI_BASE_URL}/orders/{order_id}",
-                        json={"status": status_val},
-                        headers=admin_headers
-                    )
+            result = orders_collection.insert_one(order_data)
+            order_id = str(result.inserted_id)
 
             # Delete
-            delete_response = api_client.delete(
+            delete_response = sync_client.delete(
                 f"{FASTAPI_BASE_URL}/orders/{order_id}",
                 headers=admin_headers
             )
@@ -217,7 +187,7 @@ class TestDeleteOrderNotFound:
 
     def test_delete_nonexistent_order_returns_404(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
     ):
         """
@@ -229,7 +199,7 @@ class TestDeleteOrderNotFound:
         """
         fake_id = str(ObjectId())
 
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{fake_id}",
             headers=admin_headers
         )
@@ -238,7 +208,8 @@ class TestDeleteOrderNotFound:
 
     def test_delete_already_deleted_order_returns_404(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -257,22 +228,18 @@ class TestDeleteOrderNotFound:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Delete first time
-        delete_response = api_client.delete(
+        delete_response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=admin_headers
         )
         assert delete_response.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
 
         # Try to delete again
-        delete_response_2 = api_client.delete(
+        delete_response_2 = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=admin_headers
         )
@@ -296,7 +263,7 @@ class TestDeleteOrderInvalidId:
     ])
     def test_delete_invalid_id_format_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         invalid_id: str,
     ):
@@ -308,7 +275,7 @@ class TestDeleteOrderInvalidId:
         - API validates ID format
         - Invalid formats rejected with 400
         """
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{invalid_id}",
             headers=admin_headers
         )
@@ -328,7 +295,7 @@ class TestDeleteOrderAuthentication:
 
     def test_delete_order_by_user(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         test_user: Dict[str, Any],
         auth_headers: Dict[str, str],
     ):
@@ -340,7 +307,7 @@ class TestDeleteOrderAuthentication:
         """
         order_id = str(ObjectId())
 
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=auth_headers
         )
@@ -349,7 +316,7 @@ class TestDeleteOrderAuthentication:
 
     def test_delete_order_without_authentication_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Deleting order without authentication fails with 401.
@@ -360,7 +327,7 @@ class TestDeleteOrderAuthentication:
         """
         order_id = str(ObjectId())
 
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}"
         )
 
@@ -368,7 +335,7 @@ class TestDeleteOrderAuthentication:
 
     def test_delete_order_with_invalid_token_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Deleting order with invalid token fails with 401.
@@ -379,7 +346,7 @@ class TestDeleteOrderAuthentication:
         invalid_headers = {"Authorization": "Bearer invalid_token"}
         order_id = str(ObjectId())
 
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=invalid_headers
         )
@@ -388,7 +355,8 @@ class TestDeleteOrderAuthentication:
 
     def test_delete_order_authorization_check(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -407,12 +375,8 @@ class TestDeleteOrderAuthentication:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Create different user token
         import uuid
@@ -427,7 +391,7 @@ class TestDeleteOrderAuthentication:
         other_headers = {"Authorization": f"Bearer {other_token}"}
 
         # Try to delete with different user's token
-        response = api_client.delete(
+        response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=other_headers
         )
@@ -447,7 +411,8 @@ class TestDeleteOrderIdempotency:
 
     def test_delete_idempotent_concept(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -468,33 +433,26 @@ class TestDeleteOrderIdempotency:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # First delete - should succeed
-        response1 = api_client.delete(
+        response1 = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=admin_headers
         )
         assert response1.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
 
         # Second delete - returns different status (404)
-        response2 = api_client.delete(
+        response2 = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=admin_headers
         )
         assert response2.status_code == status.HTTP_404_NOT_FOUND
 
         # But end state is same: resource doesn't exist
-        verify_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_id}",
-            headers=admin_headers
-        )
-        assert verify_response.status_code == status.HTTP_404_NOT_FOUND
+        order_obj = orders_collection.find_one({"_id": ObjectId(order_id)})
+        assert order_obj is None
 
 
 # ============================================================================
@@ -508,7 +466,8 @@ class TestDeleteOrderSideEffects:
 
     def test_delete_order_no_side_effects(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -537,30 +496,20 @@ class TestDeleteOrderSideEffects:
                 "status": "Pending"
             }
 
-            create_response = api_client.post(
-                f"{FASTAPI_BASE_URL}/orders",
-                json=order_data,
-                headers=admin_headers
-            )
-            order_ids.append(create_response.json()["_id"])
+            result = orders_collection.insert_one(order_data)
+            order_ids.append(str(result.inserted_id))
 
         # Delete first order
-        delete_response = api_client.delete(
+        delete_response = sync_client.delete(
             f"{FASTAPI_BASE_URL}/orders/{order_ids[0]}",
             headers=admin_headers
         )
         assert delete_response.status_code in [status.HTTP_204_NO_CONTENT, status.HTTP_200_OK]
 
         # Verify first order is gone
-        get_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_ids[0]}",
-            headers=admin_headers
-        )
-        assert get_response.status_code == status.HTTP_404_NOT_FOUND
+        order_obj = orders_collection.find_one({"_id": ObjectId(order_ids[0])})
+        assert order_obj is None
 
         # Verify second order still exists
-        get_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_ids[1]}",
-            headers=admin_headers
-        )
-        assert get_response.status_code == status.HTTP_200_OK
+        order_obj = orders_collection.find_one({"_id": ObjectId(order_ids[1])})
+        assert order_obj is not None

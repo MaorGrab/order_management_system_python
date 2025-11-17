@@ -21,15 +21,6 @@ class MongoDB:
     # shared Motor client across the process
     _client: Optional[AsyncIOMotorClient] = None
 
-    # # optional singleton for the MongoDB wrapper instance (so imports can call MongoDB() safely)
-    # _instance: Optional["MongoDB"] = None
-
-    # def __new__(cls, *args, **kwargs):
-    #     # ensure only one wrapper instance is created (convenience, not strictly required)
-    #     if cls._instance is None:
-    #         cls._instance = super().__new__(cls)
-    #     return cls._instance
-
     def __init__(self, uri: Optional[str] = None, db_name: Optional[str] = None):
         # initialize only once for the wrapper instance
         if getattr(self, "_initialized", False):
@@ -40,7 +31,7 @@ class MongoDB:
             "MONGODB_URL", "mongodb://root:root_password@localhost:27017"
         )
         # do not append slash or database here — we access db via client[db_name]
-        self._db_name = self.set_database(db_name) if db_name is not None else None
+        self.set_database(db_name if db_name is not None else 'oms_db')
 
     def _ensure_client(self) -> AsyncIOMotorClient:
         """Create the AsyncIOMotorClient once and reuse it."""
@@ -63,6 +54,8 @@ class MongoDB:
         Return an AsyncIOMotorDatabase instance. This is a lightweight object (no network action).
         """
         db_name = db_name or self._db_name
+        if db_name is None:
+            raise RuntimeError("Database name is not set. Call set_database() first.")
         return self.client[db_name]
 
     def get_collection(self, collection_name: str, db_name: Optional[str] = None):
@@ -78,11 +71,3 @@ class MongoDB:
             logger.info("Closing AsyncIOMotorClient")
             MongoDB._client.close()
             MongoDB._client = None
-
-    # # convenience class-level accessors (optional)
-    # @classmethod
-    # def instance(cls) -> "MongoDB":
-    #     """Return the wrapper singleton instance (same as calling MongoDB())."""
-    #     if cls._instance is None:
-    #         cls._instance = MongoDB()
-    #     return cls._instance

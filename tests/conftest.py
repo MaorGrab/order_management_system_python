@@ -5,16 +5,35 @@ from pymongo import MongoClient
 import uuid
 from datetime import datetime, timezone
 import requests
+from fastapi.testclient import TestClient
+import os
+import time
 
 from app.auth import create_access_token
 
-import time
-import os
 
 # Configuration from environment variables
 FASTAPI_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 TEST_MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://root:root_password@localhost:27017/?authSource=admin")
 BASE_DB_NAME = os.getenv("TEST_DB_NAME", "test_oms_db")
+
+from app.main import OMSApp
+
+@pytest.fixture(scope="function")
+def app(unique_db_name):
+    """
+    Creates a FastAPI app instance for testing purposes.
+    """
+    from app.main import OMSApp
+    # Create a test app instance
+    test_app = OMSApp.create(mongo_uri=TEST_MONGODB_URL, db_name=unique_db_name)
+    yield test_app
+
+@pytest.fixture(scope="function")
+def sync_client(app):
+    # for synchronous tests (fast, uses TestClient)
+    with TestClient(app) as client:
+        yield client
 
 @pytest.fixture(scope="session")
 def api_client():
@@ -96,6 +115,10 @@ def mongo_client(worker_id: str):
 @pytest.fixture
 def db_connection(unique_db_name: str, mongo_client: MongoClient):
     return mongo_client[unique_db_name]
+
+@pytest.fixture
+def orders_collection(db_connection):
+    return db_connection.orders
 
 @pytest.fixture(autouse=True)
 def cleanup_db(unique_db_name: str, mongo_client: MongoClient):
