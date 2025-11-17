@@ -1,8 +1,9 @@
 import pytest
-import requests
 from typing import Dict, Any
 from bson import ObjectId
 from starlette import status
+from fastapi.testclient import TestClient
+from pymongo.collection import Collection
 from tests.conftest import FASTAPI_BASE_URL
 
 
@@ -17,7 +18,8 @@ class TestReadOrderSuccess:
 
     def test_read_order_by_id_success(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -41,18 +43,15 @@ class TestReadOrderSuccess:
                     "quantity": 1
                 }
             ],
+            "total_price": 1200.00,
+            "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=auth_headers
-        )
-        assert create_response.status_code == status.HTTP_201_CREATED
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Now retrieve it
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=auth_headers
         )
@@ -71,7 +70,8 @@ class TestReadOrderSuccess:
 
     def test_read_multiple_orders_sequential(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -96,18 +96,16 @@ class TestReadOrderSuccess:
                         "quantity": 1
                     }
                 ],
+                "total_price": 100.00 * (i + 1),
+                "status": "Pending"
             }
 
-            create_response = api_client.post(
-                f"{FASTAPI_BASE_URL}/orders",
-                json=order_data,
-                headers=auth_headers
-            )
-            order_ids.append(create_response.json()["_id"])
+            result = orders_collection.insert_one(order_data)
+            order_ids.append(str(result.inserted_id))
 
         # Retrieve both orders
         for i, order_id in enumerate(order_ids):
-            response = api_client.get(
+            response = sync_client.get(
                 f"{FASTAPI_BASE_URL}/orders/{order_id}",
                 headers=auth_headers
             )
@@ -117,7 +115,8 @@ class TestReadOrderSuccess:
 
     def test_read_order_response_structure(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -140,17 +139,15 @@ class TestReadOrderSuccess:
                     "quantity": 1
                 }
             ],
+            "total_price": 1200.00,
+            "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=auth_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Read and validate structure
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=auth_headers
         )
@@ -185,7 +182,7 @@ class TestReadOrderNotFound:
 
     def test_read_nonexistent_order_returns_404(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
     ):
         """
@@ -198,7 +195,7 @@ class TestReadOrderNotFound:
         # Use valid ObjectId format but doesn't exist
         fake_id = str(ObjectId())
 
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{fake_id}",
             headers=auth_headers
         )
@@ -225,7 +222,7 @@ class TestReadOrderInvalidId:
     ])
     def test_read_invalid_id_format_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         invalid_id: str,
     ):
@@ -237,7 +234,7 @@ class TestReadOrderInvalidId:
         - API validates ID format
         - Invalid formats rejected with 400
         """
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{invalid_id}",
             headers=auth_headers
         )
@@ -246,7 +243,7 @@ class TestReadOrderInvalidId:
 
     def test_read_empty_id_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
     ):
         """
@@ -255,7 +252,7 @@ class TestReadOrderInvalidId:
         Verifies:
         - Empty ID handled properly
         """
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/ ",
             headers=auth_headers
         )
@@ -280,7 +277,7 @@ class TestReadOrderAuthentication:
 
     def test_read_order_without_authentication_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Reading order without authentication fails with 401.
@@ -291,7 +288,7 @@ class TestReadOrderAuthentication:
         """
         order_id = str(ObjectId())
 
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{order_id}"
         )
 
@@ -299,7 +296,7 @@ class TestReadOrderAuthentication:
 
     def test_read_order_with_invalid_token_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Reading order with invalid token fails with 401.
@@ -310,7 +307,7 @@ class TestReadOrderAuthentication:
         invalid_headers = {"Authorization": "Bearer invalid_token"}
         order_id = str(ObjectId())
 
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=invalid_headers
         )
@@ -319,7 +316,8 @@ class TestReadOrderAuthentication:
 
     def test_read_other_users_order_forbidden(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -335,14 +333,12 @@ class TestReadOrderAuthentication:
         order_data = {
             "user_id": test_user["user_id"],
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
+            "total_price": 100.00,
+            "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=auth_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Create different user token
         import uuid
@@ -357,7 +353,7 @@ class TestReadOrderAuthentication:
         other_headers = {"Authorization": f"Bearer {other_token}"}
 
         # Try to read with different user's token
-        response = api_client.get(
+        response = sync_client.get(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             headers=other_headers
         )

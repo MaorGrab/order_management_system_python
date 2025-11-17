@@ -1,7 +1,7 @@
 import pytest
-import requests
 from typing import Dict, Any
 from starlette import status
+from fastapi.testclient import TestClient
 from tests.conftest import FASTAPI_BASE_URL
 
 # ============================================================================
@@ -15,7 +15,7 @@ class TestCreateOrderSuccess:
 
     def test_create_order_with_valid_data_success(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -40,7 +40,7 @@ class TestCreateOrderSuccess:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -55,7 +55,7 @@ class TestCreateOrderSuccess:
 
     def test_create_order_with_multiple_items(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -91,7 +91,7 @@ class TestCreateOrderSuccess:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -115,7 +115,7 @@ class TestCreateOrderSuccess:
     ])
     def test_create_order_various_prices(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
         total_price: float,
@@ -131,7 +131,7 @@ class TestCreateOrderSuccess:
             "items": items,
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -153,7 +153,7 @@ class TestCreateOrderValidation:
 
     def test_create_order_missing_user_id(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
     ):
         """
@@ -168,7 +168,7 @@ class TestCreateOrderValidation:
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -178,7 +178,7 @@ class TestCreateOrderValidation:
 
     def test_create_order_missing_items(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -193,7 +193,7 @@ class TestCreateOrderValidation:
             "user_id": test_user["user_id"],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -203,7 +203,7 @@ class TestCreateOrderValidation:
 
     def test_create_order_empty_items_array(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -219,7 +219,7 @@ class TestCreateOrderValidation:
             "items": [],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -240,7 +240,7 @@ class TestCreateOrderPriceValidation:
 
     def test_create_order_negative_price(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -264,7 +264,7 @@ class TestCreateOrderPriceValidation:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -275,7 +275,7 @@ class TestCreateOrderPriceValidation:
 
     def test_create_order_zero_price(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -297,7 +297,7 @@ class TestCreateOrderPriceValidation:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -322,7 +322,7 @@ class TestCreateOrderQuantityValidation:
 
     def test_create_order_with_zero_quantity(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -345,7 +345,7 @@ class TestCreateOrderQuantityValidation:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -355,7 +355,7 @@ class TestCreateOrderQuantityValidation:
 
     def test_create_order_with_negative_quantity(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -374,7 +374,7 @@ class TestCreateOrderQuantityValidation:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -385,7 +385,7 @@ class TestCreateOrderQuantityValidation:
     @pytest.mark.parametrize("quantity", [1, 5, 10, 100, 1000])
     def test_create_order_valid_quantities(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
         quantity: int,
@@ -407,7 +407,7 @@ class TestCreateOrderQuantityValidation:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -428,7 +428,7 @@ class TestCreateOrderAuthentication:
 
     def test_create_order_without_authentication(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Creating order without authentication fails with 401.
@@ -442,7 +442,7 @@ class TestCreateOrderAuthentication:
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data
         )
@@ -451,7 +451,7 @@ class TestCreateOrderAuthentication:
 
     def test_create_order_with_invalid_token(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Creating order with invalid JWT token fails with 401.
@@ -466,7 +466,7 @@ class TestCreateOrderAuthentication:
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=invalid_headers
@@ -476,7 +476,7 @@ class TestCreateOrderAuthentication:
 
     def test_create_order_for_different_user_forbidden(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -493,7 +493,7 @@ class TestCreateOrderAuthentication:
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -514,7 +514,7 @@ class TestCreateOrderStatusValidation:
 
     def test_create_order_with_pending_status(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -530,7 +530,7 @@ class TestCreateOrderStatusValidation:
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -541,7 +541,7 @@ class TestCreateOrderStatusValidation:
 
     def test_create_order_with_invalid_status(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -558,7 +558,7 @@ class TestCreateOrderStatusValidation:
             "status": "InvalidStatus"
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -569,7 +569,7 @@ class TestCreateOrderStatusValidation:
     @pytest.mark.parametrize("invalid_status", ["Processing", "Shipped", "Delivered", "Cancelled"])
     def test_create_order_invalid_initial_statuses(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
         invalid_status: str,
@@ -589,7 +589,7 @@ class TestCreateOrderStatusValidation:
             "status": invalid_status
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -610,7 +610,7 @@ class TestCreateOrderEdgeCases:
 
     def test_create_order_with_special_characters_in_product_name(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -633,7 +633,7 @@ class TestCreateOrderEdgeCases:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -644,7 +644,7 @@ class TestCreateOrderEdgeCases:
 
     def test_create_order_with_decimal_precision(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -667,7 +667,7 @@ class TestCreateOrderEdgeCases:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -679,7 +679,7 @@ class TestCreateOrderEdgeCases:
     @pytest.mark.slow
     def test_create_order_with_very_large_quantity(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -700,7 +700,7 @@ class TestCreateOrderEdgeCases:
             ],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers
@@ -710,7 +710,7 @@ class TestCreateOrderEdgeCases:
 
     def test_create_order_invalid_order_id_format_in_response(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -726,7 +726,7 @@ class TestCreateOrderEdgeCases:
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
         }
 
-        response = api_client.post(
+        response = sync_client.post(
             f"{FASTAPI_BASE_URL}/orders",
             json=order_data,
             headers=auth_headers

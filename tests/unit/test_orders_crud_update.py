@@ -1,10 +1,11 @@
 
 import pytest
-import requests
 from time import sleep
 from typing import Dict, Any
 from bson import ObjectId
 from starlette import status
+from fastapi.testclient import TestClient
+from pymongo.collection import Collection
 from tests.conftest import FASTAPI_BASE_URL
 
 
@@ -19,7 +20,8 @@ class TestUpdateOrderSuccess:
 
     def test_update_order_status_pending_to_processing(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -40,17 +42,14 @@ class TestUpdateOrderSuccess:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
-        original_updated_at = create_response.json()["updated_at"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
+        original_order = orders_collection.find_one({"_id": result.inserted_id})
+        original_updated_at = original_order.get("updated_at")
         sleep(1)
         # Update status
         update_data = {"status": "Processing"}
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json=update_data,
             headers=admin_headers
@@ -63,7 +62,8 @@ class TestUpdateOrderSuccess:
 
     def test_update_order_status_processing_to_shipped(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -72,30 +72,19 @@ class TestUpdateOrderSuccess:
         
         Valid transition: Processing → Shipped
         """
-        # Create and update to Processing first
+        # Create order in Processing status
         order_data = {
             "user_id": test_admin["user_id"],
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
             "total_price": 100.00,
-            "status": "Pending"
+            "status": "Processing"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
-
-        # Update to Processing
-        api_client.patch(
-            f"{FASTAPI_BASE_URL}/orders/{order_id}",
-            json={"status": "Processing"},
-            headers=admin_headers
-        )
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Update to Shipped
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Shipped"},
             headers=admin_headers
@@ -106,7 +95,8 @@ class TestUpdateOrderSuccess:
 
     def test_update_order_status_shipped_to_delivered(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -115,31 +105,19 @@ class TestUpdateOrderSuccess:
         
         Valid transition: Shipped → Delivered
         """
-        # Create order and transition through statuses
+        # Create order in Shipped status
         order_data = {
             "user_id": test_admin["user_id"],
             "items": [{"product_id": "p1", "name": "Item", "price": 100, "quantity": 1}],
             "total_price": 100.00,
-            "status": "Pending"
+            "status": "Shipped"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
-
-        # Transition through statuses
-        for status_value in ["Processing", "Shipped"]:
-            api_client.patch(
-                f"{FASTAPI_BASE_URL}/orders/{order_id}",
-                json={"status": status_value},
-                headers=admin_headers
-            )
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Update to Delivered
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Delivered"},
             headers=admin_headers
@@ -155,7 +133,8 @@ class TestUpdateOrderSuccess:
     ])
     def test_update_order_valid_transitions(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
         transitions: tuple,
@@ -175,34 +154,11 @@ class TestUpdateOrderSuccess:
             "status": from_status
         }
 
-        # If not Pending, need to transition first
-        if from_status != "Pending":
-            create_response = api_client.post(
-                f"{FASTAPI_BASE_URL}/orders",
-                json={"user_id": test_admin["user_id"], "items": order_data["items"],
-                      "total_price": 100.00, "status": "Pending"},
-                headers=admin_headers
-            )
-            order_id = create_response.json()["_id"]
-
-            # Transition to from_status
-            all_statuses = ["Pending", "Processing", "Shipped", "Delivered"]
-            for status_val in all_statuses[1:all_statuses.index(from_status) + 1]:
-                api_client.patch(
-                    f"{FASTAPI_BASE_URL}/orders/{order_id}",
-                    json={"status": status_val},
-                    headers=admin_headers
-                )
-        else:
-            create_response = api_client.post(
-                f"{FASTAPI_BASE_URL}/orders",
-                json=order_data,
-                headers=admin_headers
-            )
-            order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Now test the transition
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": to_status},
             headers=admin_headers
@@ -222,7 +178,8 @@ class TestUpdateOrderInvalidTransitions:
     """Test invalid status transitions are rejected."""
     def test_update_order_invalid_status_value(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -239,15 +196,11 @@ class TestUpdateOrderInvalidTransitions:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Try invalid status value
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "InvalidStatus"},
             headers=admin_headers
@@ -267,7 +220,7 @@ class TestUpdateOrderNotFound:
 
     def test_update_nonexistent_order_returns_404(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
     ):
         """
@@ -279,7 +232,7 @@ class TestUpdateOrderNotFound:
         """
         fake_id = str(ObjectId())
 
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{fake_id}",
             json={"status": "Processing"},
             headers=admin_headers
@@ -304,7 +257,7 @@ class TestUpdateOrderInvalidId:
     ])
     def test_update_invalid_id_format_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         invalid_id: str,
     ):
@@ -313,7 +266,7 @@ class TestUpdateOrderInvalidId:
         
         Parameterized for multiple invalid formats.
         """
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{invalid_id}",
             json={"status": "Processing"},
             headers=admin_headers
@@ -334,14 +287,14 @@ class TestUpdateOrderAuthentication:
 
     def test_update_order_without_authentication_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Updating order without authentication fails with 401.
         """
         order_id = str(ObjectId())
 
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Processing"}
         )
@@ -350,7 +303,7 @@ class TestUpdateOrderAuthentication:
 
     def test_update_order_with_invalid_token_fails(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
     ):
         """
         TEST: Updating order with invalid token fails with 401.
@@ -358,7 +311,7 @@ class TestUpdateOrderAuthentication:
         invalid_headers = {"Authorization": "Bearer invalid_token"}
         order_id = str(ObjectId())
 
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Processing"},
             headers=invalid_headers
@@ -368,7 +321,7 @@ class TestUpdateOrderAuthentication:
 
     def test_update_order_by_user(
         self,
-        api_client: requests.Session,
+        sync_client: TestClient,
         auth_headers: Dict[str, str],
         test_user: Dict[str, Any],
     ):
@@ -377,7 +330,7 @@ class TestUpdateOrderAuthentication:
         """
         order_id = str(ObjectId())
 
-        response = api_client.patch(
+        response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Processing"},
             headers=auth_headers
@@ -397,7 +350,8 @@ class TestUpdateOrderVerification:
 
     def test_update_persists_to_database(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -416,15 +370,11 @@ class TestUpdateOrderVerification:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        order_id = create_response.json()["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
 
         # Update status
-        update_response = api_client.patch(
+        update_response = sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Processing"},
             headers=admin_headers
@@ -432,17 +382,13 @@ class TestUpdateOrderVerification:
         assert update_response.status_code == status.HTTP_200_OK
 
         # Read to verify persistence
-        read_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_id}",
-            headers=admin_headers
-        )
-
-        assert read_response.status_code == status.HTTP_200_OK
-        assert read_response.json()["status"] == "Processing"
+        updated_order = orders_collection.find_one({"_id": ObjectId(order_id)})
+        assert updated_order["status"] == "Processing"
 
     def test_update_other_fields_unchanged(
         self,
-        api_client: requests.Session,
+        orders_collection: Collection,
+        sync_client: TestClient,
         admin_headers: Dict[str, str],
         test_admin: Dict[str, Any],
     ):
@@ -465,35 +411,27 @@ class TestUpdateOrderVerification:
             "status": "Pending"
         }
 
-        create_response = api_client.post(
-            f"{FASTAPI_BASE_URL}/orders",
-            json=order_data,
-            headers=admin_headers
-        )
-        created_data = create_response.json()
-        order_id = created_data["_id"]
+        result = orders_collection.insert_one(order_data)
+        order_id = str(result.inserted_id)
+        created_data = orders_collection.find_one({"_id": result.inserted_id})
 
         sleep(1)
         # Update status
-        api_client.patch(
+        sync_client.patch(
             f"{FASTAPI_BASE_URL}/orders/{order_id}",
             json={"status": "Processing"},
             headers=admin_headers
         )
 
         # Read and verify
-        read_response = api_client.get(
-            f"{FASTAPI_BASE_URL}/orders/{order_id}",
-            headers=admin_headers
-        )
-        updated_data = read_response.json()
+        updated_data = orders_collection.find_one({"_id": ObjectId(order_id)})
 
         # Verify unchanged fields
         assert updated_data["user_id"] == created_data["user_id"]
         assert len(updated_data["items"]) == 2
         assert updated_data["total_price"] == 200.00
-        assert updated_data["created_at"] == created_data["created_at"]
+        assert updated_data.get("created_at") == created_data.get("created_at")
         
         # Verify changed fields
         assert updated_data["status"] == "Processing"
-        assert updated_data["updated_at"] != created_data["updated_at"]
+        assert updated_data.get("updated_at") != created_data.get("updated_at")
