@@ -1,17 +1,52 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from typing import Optional
+from contextlib import asynccontextmanager
+import os
 
-from app.database import get_database
+from app.database import MongoDB
 from app.models import OrderCreate, OrderUpdate, OrderResponse, OrderListResponse
 from app.auth import get_current_user, get_current_admin_user, User
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_app()
+    yield
+    close_app()
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Order Management System API",
     version="1.0.0",
     description="API for managing orders in an e-commerce system"
 )
+
+_mongo_manager: Optional[MongoDB] = None
+
+def get_mongo_manager() -> MongoDB:
+    if _mongo_manager is None:
+        raise RuntimeError("Mongo manager not initialized")
+    return _mongo_manager
+
+def get_database(db_name: Optional[str] = None) -> AsyncIOMotorDatabase:
+    return get_mongo_manager().get_database(db_name)
+
+def init_app(db_uri: str = None, db_name: str = None):
+    global _mongo_manager
+    if db_uri is None:
+        db_uri = os.getenv("MONGODB_URL", "mongodb://root:root_password@localhost:27017/")
+    if db_name is None:
+        db_name = os.getenv("MONGODB_DB_NAME", "oms_db")
+    _mongo_manager = MongoDB(db_uri)
+    _mongo_manager.set_database(db_name)
+
+def close_app():
+    global _mongo_manager
+    if _mongo_manager:
+        # logger.info("Closing database connection")
+        _mongo_manager.close()
+        _mongo_manager = None
 
 
 @app.get("/")
